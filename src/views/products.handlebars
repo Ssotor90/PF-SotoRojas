@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Productos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .products-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .product-card {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 15px;
+            padding: 15px;
+            width: 300px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .product-card h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .product-card p {
+            margin: 10px 0;
+            color: #666;
+        }
+        .product-card .price {
+            font-size: 1.2em;
+            color: #009688;
+        }
+        .product-card button {
+            background-color: #009688;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .product-card button:hover {
+            background-color: #00796b;
+        }
+        .cart-button {
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 1em;
+        }
+        .cart-button:hover {
+            background-color: #e64a19;
+        }
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            background-color: #009688;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: background-color 0.3s ease;
+        }
+        .pagination button:hover {
+            background-color: #00796b;
+        }
+        .sort-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .sort-buttons button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .sort-buttons button:hover {
+            background-color: #45a049;
+        }
+        .search-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .search-bar input {
+            padding: 10px;
+            width: 300px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .search-bar button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            background-color: #009688;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .search-bar button:hover {
+            background-color: #00796b;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Lista de Productos</h1>
+        <a href="/carts/{{defaultCartId}}" class="cart-button">Ir al Carrito</a>
+    </div>
+
+    <div class="search-bar">
+        <input type="text" id="searchQuery" placeholder="Buscar por categoría...">
+        <button onclick="searchProducts()">Buscar</button>
+    </div>
+
+    <div class="sort-buttons">
+        <button onclick="sortProducts('asc')">Ordenar por Precio Ascendente</button>
+        <button onclick="sortProducts('desc')">Ordenar por Precio Descendente</button>
+    </div>
+
+    <div class="products-container" id="products-container">
+        {{#each products}}
+        <div class="product-card">
+            <h2>{{this.title}}</h2>
+            <p>{{this.description}}</p>
+            <p class="price">Precio: ${{this.price}}</p>
+            <p>Categoría: {{this.category}}</p>
+            <p>Stock: {{this.stock}}</p>
+            <button onclick="addToCart('{{this._id}}')">Agregar al carrito</button>
+        </div>
+        {{/each}}
+    </div>
+
+    <div class="pagination">
+        {{#if prevLink}}
+        <button onclick="location.href='{{prevLink}}'">Anterior</button>
+        {{/if}}
+        {{#if nextLink}}
+        <button onclick="location.href='{{nextLink}}'">Siguiente</button>
+        {{/if}}
+    </div>
+
+    <script>
+        const defaultCartId = '{{defaultCartId}}'; 
+
+        async function addToCart(productId) {
+            console.log("Agregar al carrito clickeado para el producto:", productId);
+
+            if (!defaultCartId) {
+                console.error('No se encontró un ID de carrito predeterminado.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/carts/${defaultCartId}/products/${productId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ quantity: 1 })
+                });
+
+                const data = await response.json();
+                console.log("Respuesta del servidor:", data);
+                if (data.status === 'success') {
+                    alert('Producto agregado al carrito');
+                } else {
+                    alert('Hubo un problema al agregar el producto al carrito');
+                }
+            } catch (error) {
+                console.error('Error en la solicitud:', error);
+            }
+        }
+
+        async function sortProducts(order) {
+            try {
+                const response = await fetch(`/api/products?sort=${order}`);
+                const data = await response.json();
+                
+                const sortedProducts = data.payload; 
+
+                const container = document.getElementById('products-container');
+                container.innerHTML = '';
+
+                if (Array.isArray(sortedProducts)) {
+                    sortedProducts.forEach(product => {
+                        const productElement = document.createElement('div');
+                        productElement.classList.add('product-card');
+                        productElement.innerHTML = `
+                            <h2>${product.title}</h2>
+                            <p>${product.description}</p>
+                            <p class="price">Precio: $${product.price}</p>
+                            <p>Categoría: ${product.category}</p>
+                            <p>Stock: ${product.stock}</p>
+                            <button onclick="addToCart('${product._id}')">Agregar al carrito</button>
+                        `;
+                        container.appendChild(productElement);
+                    });
+                } else {
+                    console.error('El formato de los datos no es un array:', sortedProducts);
+                }
+            } catch (error) {
+                console.error('Error al ordenar los productos:', error);
+            }
+        }
+
+        async function searchProducts() {
+            const query = document.getElementById('searchQuery').value;
+            if (!query) return;
+
+            try {
+                const response = await fetch(`/api/products?query=${query}`);
+                const data = await response.json();
+                
+                const searchedProducts = data.payload;
+
+                const container = document.getElementById('products-container');
+                container.innerHTML = '';
+
+                if (Array.isArray(searchedProducts)) {
+                    searchedProducts.forEach(product => {
+                        const productElement = document.createElement('div');
+                        productElement.classList.add('product-card');
+                        productElement.innerHTML = `
+                            <h2>${product.title}</h2>
+                            <p>${product.description}</p>
+                            <p class="price">Precio: $${product.price}</p>
+                            <p>Categoría: ${product.category}</p>
+                            <p>Stock: ${product.stock}</p>
+                            <button onclick="addToCart('${product._id}')">Agregar al carrito</button>
+                        `;
+                        container.appendChild(productElement);
+                    });
+                } else {
+                    console.error('El formato de los datos no es un array:', searchedProducts);
+                }
+            } catch (error) {
+                console.error('Error al buscar los productos:', error);
+            }
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrito de Compras</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .cart-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 5px;
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+        .cart-item h2 {
+            font-size: 1.2em;
+            color: #333;
+        }
+        .cart-item p {
+            margin: 0;
+            color: #666;
+        }
+        .cart-item .price {
+            font-weight: bold;
+            color: #009688;
+        }
+        .cart-total {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .cart-total p {
+            font-size: 1.2em;
+            color: #333;
+        }
+        .cart-item button {
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        .cart-item button:hover {
+            background-color: #e64a19;
+        }
+        .cart-item input[type="number"] {
+            width: 50px;
+            padding: 5px;
+            font-size: 1em;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Carrito de Compras</h1>
+
+    <div class="cart-container">
+        {{#each products}}
+        <div class="cart-item">
+            <div>
+                <h2>{{this.title}}</h2>
+                <p>{{this.description}}</p>
+                <p>Cantidad: <input type="number" min="1" value="{{this.quantity}}" onchange="updateQuantity('{{../cartId}}', '{{this.id}}', this.value, this)"></p>
+            </div>
+            <div>
+                <p class="price">Precio: ${{this.price}}</p>
+                <p class="price-total">Total: ${{this.totalPrice}}</p>
+                <button onclick="removeFromCart('{{../cartId}}', '{{this.id}}', this.closest('.cart-item'))">Eliminar</button>
+            </div>
+        </div>
+        {{/each}}
+        <div class="cart-total">
+            <p>Total a pagar: ${{calculateTotal products}}</p>
+        </div>
+    </div>
+
+    <script>
+        async function removeFromCart(cartId, productId, productElement) {
+            console.log(`Intentando eliminar el producto ${productId} del carrito ${cartId}`);
+            const url = `/api/carts/${cartId}/products/${productId}`;
+            console.log(`URL de la solicitud DELETE: ${url}`);
+            try {
+                const response = await fetch(url, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        alert('Producto eliminado del carrito');
+                        productElement.remove(); 
+                    } else {
+                        alert(`Error: ${data.message}`);
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.error('Error en la solicitud:', errorText);
+                    alert(`Error al intentar eliminar el producto del carrito: ${response.status} ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Error en la solicitud:', error);
+                alert('Ocurrió un error inesperado al eliminar el producto.');
+            }
+        }
+
+        async function updateQuantity(cartId, productId, newQuantity, inputElement) {
+            try {
+                console.log(`Enviando solicitud PUT para actualizar el producto ${productId} en el carrito ${cartId} con cantidad ${newQuantity}`);
+                const response = await fetch(`/api/carts/${cartId}/products/${productId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ quantity: parseInt(newQuantity) })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Respuesta recibida:', data);
+                    if (data.status === 'success') {
+                        const totalPriceElement = inputElement.closest('.cart-item').querySelector('.price-total');
+                        totalPriceElement.textContent = `Total: $${data.updatedProduct.totalPrice}`;
+                        const cartTotalElement = document.querySelector('.cart-total p');
+                        cartTotalElement.textContent = `Total a pagar: $${data.cartTotal}`;
+                    } else {
+                        alert('Hubo un problema al actualizar la cantidad');
+                    }
+                } else {
+                    console.error('Error al intentar actualizar la cantidad:', response.statusText);
+                    alert('Error al intentar actualizar la cantidad');
+                }
+            } catch (error) {
+                console.error('Error en la solicitud:', error);
+            }
+        }
+    </script>
+
+</body>
+</html>
