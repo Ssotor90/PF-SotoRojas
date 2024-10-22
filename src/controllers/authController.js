@@ -1,25 +1,38 @@
-const User = require('../models/userModel');
-const bcrypt = require('bcrypt');
-const { generateToken } = require('../utils/jwtHelper');
+import User from '../models/userModel.js';
+import bcrypt from 'bcryptjs';
+import { generateToken } from '../utils/jwtHelper.js';
 
-exports.register = async (req, res) => {
+export const register = async (req, res) => {
     const { first_name, last_name, email, age, password } = req.body;
     try {
-        const user = new User({ first_name, last_name, email, age, password });
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: 'El usuario ya existe' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10); 
+        const user = new User({ first_name, last_name, email, age, password: hashedPassword });
         await user.save();
+        
         res.status(201).json({ message: 'Usuario registrado con éxito' });
     } catch (error) {
         res.status(400).json({ message: 'Error en el registro', error });
     }
 };
 
-exports.login = async (req, res) => {
+export const login = async (req, res) => {
     const { email, password } = req.body;
     try {
         const user = await User.findOne({ email });
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-        return res.status(401).json({ message: 'Credenciales incorrectas' });
+        if (!user) {
+            return res.status(401).json({ message: 'Credenciales incorrectas' });
         }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Credenciales incorrectas' });
+        }
+
         const token = generateToken(user);
         res.status(200).json({ token });
     } catch (error) {
