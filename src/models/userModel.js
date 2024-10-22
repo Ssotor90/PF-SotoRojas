@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
     first_name: { type: String, required: true },
@@ -15,8 +15,8 @@ userSchema.pre('save', async function(next) {
     if (!this.isModified('password')) return next();
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log("Contraseña hasheada antes de guardar:", this.password); 
     next();
 });
 
-// Cambia esta línea:
 export default mongoose.model('User', userSchema);
